@@ -1,0 +1,21 @@
+Bundle-Name: KafkaConnector Service Bundle
+Bundle-SymbolicName: KafkaConnector
+Bundle-Activator: it.water.implementation.osgi.bundle.WaterBundleActivator
+Import-Package: \
+    org.osgi.framework.*,\
+    org.osgi.service.*,\
+    org.osgi.util.*,\
+    org.slf4j,\
+    org.apache.aries.jpa.*,\
+    org.apache.aries.cdi.*,\
+    javassist.util.proxy,\
+    jakarta.validation,\
+    jakarta.validation.*,\
+    it.water.core.*,\
+    it.water.repository.*,\
+    it.water.service.rest.*,\
+    it.water.implementation.osgi.*
+Export-Package: \
+    it.water.connectors.kafka.*
+DynamicImport-Package: *
+-cdiannotations: *;discover=annotated_by_bean

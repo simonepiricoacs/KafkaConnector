@@ -1,0 +1,9 @@
+{
+    "generator-water": {
+        "inner-project": true,
+        "project-type": "api",
+        "projectName": "KafkaConnector",
+        "projectGroupId": "it.water.connectors.kafka",
+        "projectVersion": "project.waterVersion"
+    }
+}
