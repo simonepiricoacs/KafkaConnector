@@ -4,7 +4,7 @@ import it.water.connectors.kafka.model.ConnectorConfig;
 import it.water.connectors.kafka.model.KafkaMessage;
 import it.water.connectors.kafka.model.KafkaPermission;
 import it.water.connectors.kafka.model.KafkaConnector;
-import it.water.core.api.service.BaseEntitySystemApi;
+import it.water.core.api.service.BaseSystemApi;
 import org.apache.kafka.clients.admin.CreateAclsResult;
 import org.apache.kafka.clients.admin.CreateTopicsResult;
 import org.apache.kafka.clients.admin.DeleteAclsResult;
@@ -20,7 +20,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 
-public interface KafkaConnectorSystemApi extends BaseEntitySystemApi<KafkaConnector> {
+public interface KafkaConnectorSystemApi extends BaseSystemApi {
     void registerMessageReceiver(KafkaMessageReceiver receiver, String topic);
 
     void unregisterMessageReceiver(KafkaMessageReceiver receiver, String topic);

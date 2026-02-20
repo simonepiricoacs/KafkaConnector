@@ -11,14 +11,6 @@ dependencies {
 	//lombok
     implementation group: 'org.projectlombok', name: 'lombok', version: project.lombokVersion
     annotationProcessor 'org.projectlombok:lombok:' + project.lombokVersion
-	//Water Jakarta persistence
-	implementation 'it.water.repository.jpa:JpaRepository-api:'+project.waterVersion
-	implementation group: 'jakarta.transaction', name: 'jakarta.transaction-api', version: project.jakartaTransactionApiVersion
-	implementation group: 'jakarta.persistence', name: 'jakarta.persistence-api', version: project.jakartaPersistenceVersion
-	//Water Persistence
-	implementation group:'it.water.repository', name:'Repository-entity', version:project.waterVersion
-	implementation group:'it.water.repository', name:'Repository-persistence', version:project.waterVersion
-	implementation group:'it.water.repository', name:'Repository-service', version:project.waterVersion
 	//Validation
 	implementation 'it.water.core:Core-validation:'+project.waterVersion
     implementation group: 'jakarta.validation', name: 'jakarta.validation-api', version: project.jakartaValidationVersion
@@ -43,9 +35,8 @@ dependencies {
 	implementation group: 'it.water.service.rest', name: 'Rest-security', version: project.waterVersion
 	implementation group: 'it.water.service.rest', name: 'Rest-service', version: project.waterVersion
 	implementation group: 'it.water.service.rest', name: 'Rest-jaxrs-api', version: project.waterVersion
-	implementation group: 'it.water.service.rest', name: 'Rest-persistence', version: project.waterVersion
 	// https://mvnrepository.com/artifact/io.swagger/swagger-jaxrs
-    implementation group: 'io.swagger', name: 'swagger-jaxrs', version: project.swaggerJaxRsVersion
+	implementation group: 'io.swagger', name: 'swagger-jaxrs', version: project.swaggerJaxRsVersion
 
 	
 	implementation project (":KafkaConnector-api")
@@ -65,15 +56,8 @@ dependencies {
 	testImplementation 'org.junit.jupiter:junit-jupiter-engine:' + project.junitJupiterVersion
 	testImplementation 'org.atteo.classindex:classindex:' + project.atteoClassIndexVersion
 
-	//for testing purpose we use hibernate as persistence provider
-	testImplementation 'org.hibernate:hibernate-core:'+project.hibernateVersion
-	testImplementation 'org.hsqldb:hsqldb:2.4.1'
-
-
 	//Using jetty and apache cxf (jaxrs compliant framework) for testing
 	testImplementation group: 'it.water.service.rest', name: 'Rest-api-manager-apache-cxf', version: project.waterVersion
-	//Using javax jpa for testing purpose
-	testImplementation group: 'it.water.repository.jpa', name: 'JpaRepository-test-utils', version: project.waterVersion
 	testImplementation group: 'org.reflections', name: 'reflections', version: '0.10.2'
 	testImplementation group: 'org.apache.httpcomponents', name: 'httpclient', version: '4.5.13'
 	testImplementation group: 'org.apache.cxf', name: 'cxf-rt-transports-http-jetty', version: project.cxfVersion

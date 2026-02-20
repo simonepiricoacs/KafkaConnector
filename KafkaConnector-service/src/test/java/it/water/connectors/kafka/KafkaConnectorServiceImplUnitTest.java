@@ -110,7 +110,8 @@ class KafkaConnectorServiceImplUnitTest {
 
     @Test
     void connectorOperationsDelegateToSystemService() throws IOException {
-        KafkaConnector connector = new KafkaConnector("connector");
+        KafkaConnector connector = new KafkaConnector();
+        connector.setName("connector");
         ConnectorConfig config = new ConnectorConfig();
         config.setName("connector");
 

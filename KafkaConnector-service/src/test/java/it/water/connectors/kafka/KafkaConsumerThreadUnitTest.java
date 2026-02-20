@@ -24,6 +24,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyMap;
@@ -61,6 +62,7 @@ class KafkaConsumerThreadUnitTest {
             KafkaConsumer<byte[], byte[]> consumer = construction.constructed().get(0);
             verify(consumer, times(0)).subscribe(any(List.class));
             verify(consumer, times(0)).poll(any(Duration.class));
+            verify(consumer, times(1)).close();
         }
     }
 
@@ -163,6 +165,21 @@ class KafkaConsumerThreadUnitTest {
         }
     }
 
+    @Test
+    void notifyKafkaMessageHandlesNullExecutorAndNullHandler() throws Exception {
+        try (MockedConstruction<KafkaConsumer> ignored = org.mockito.Mockito.mockConstruction(KafkaConsumer.class)) {
+            KafkaConsumerThread thread = new KafkaConsumerThread(
+                baseConsumerProps(),
+                new Properties(),
+                Collections.singletonList("topic-2"),
+                null,
+                null
+            );
+
+            assertDoesNotThrow(() -> thread.notifyKafkaMessage(KafkaMessage.from("topic-2", null, "v".getBytes())));
+        }
+    }
+
     private Properties baseConsumerProps() {
         Properties props = new Properties();
         props.put("bootstrap.servers", "localhost:9092");
@@ -172,7 +189,7 @@ class KafkaConsumerThreadUnitTest {
 
     private Properties pollProps(String value) {
         Properties props = new Properties();
-        props.put(KafkaConnectorConstants.HYPERIOT_KAFKA_SYSTEM_CONSUMER_POLL_MS, value);
+        props.put(KafkaConnectorConstants.WATER_KAFKA_SYSTEM_CONSUMER_POLL_MS, value);
         return props;
     }
 }

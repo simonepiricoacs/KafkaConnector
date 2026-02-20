@@ -7,16 +7,10 @@ dependencies {
 	//Water Core dependencies
     implementation group: "it.water.core", name: "Core-api", version: project.waterVersion
 	implementation group: "it.water.core", name:"Core-interceptors", version:project.waterVersion
-	implementation group: "it.water.core", name: "Core-model", version: project.waterVersion
-	implementation group:'it.water.repository',name:'Repository-entity', version:project.waterVersion
+	implementation project(":KafkaConnector-model")
 	//Kafka clients and reactor
 	implementation group: 'org.apache.kafka', name: 'kafka-clients', version: project.kafkaClientsVersion
 	implementation group: 'io.projectreactor.kafka', name: 'reactor-kafka', version: project.reactorKafkaVersion
-	implementation project(":KafkaConnector-model")
-	//jakarta persistence
-	implementation group:'jakarta.persistence', name:'jakarta.persistence-api',version: project.jakartaPersistenceVersion
-	//Water jakarta persistence
-	implementation group:'it.water.repository.jpa', name:'JpaRepository-api', version:project.waterVersion
 	//Rest services
 	implementation group: "it.water.service.rest", name: "Rest-api", version: project.waterVersion
 	// https://mvnrepository.com/artifact/io.swagger/swagger-jaxrs
@@ -25,7 +19,7 @@ dependencies {
 
 publishing {
     	publications {
-        	hyperiot(MavenPublication) {
+        	water(MavenPublication) {
             	from components.java
         }
     }

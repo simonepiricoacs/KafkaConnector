@@ -9,6 +9,7 @@ import it.water.connectors.kafka.service.KafkaConnectorSystemServiceImpl;
 import it.water.connectors.kafka.util.KafkaConnectorConstants;
 import it.water.core.api.bundle.ApplicationProperties;
 import org.apache.http.HttpEntity;
+import org.apache.http.StatusLine;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpDelete;
 import org.apache.http.client.methods.HttpGet;
@@ -25,6 +26,7 @@ import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.acl.AclBinding;
 import org.apache.kafka.common.acl.AclOperation;
 import org.apache.kafka.common.acl.AclPermissionType;
 import org.apache.kafka.common.resource.PatternType;
@@ -62,6 +64,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
@@ -319,6 +322,10 @@ class KafkaConnectorSystemServiceImplUnitTest {
         assertSame(deleteTopicsResult, service.adminDropTopic(Collections.singletonList("topic-a")));
         assertSame(createAclsResult, service.adminAddACLs("user", permissions));
         assertSame(deleteAclsResult, service.adminDeleteACLs("user", permissions));
+
+        ArgumentCaptor<List<AclBinding>> aclCaptor = ArgumentCaptor.forClass(List.class);
+        verify(adminClient, atLeastOnce()).createAcls(aclCaptor.capture());
+        assertEquals("user", aclCaptor.getValue().get(0).entry().principal());
     }
 
     @Test
@@ -342,6 +349,9 @@ class KafkaConnectorSystemServiceImplUnitTest {
             when(httpClient.execute(any(HttpGet.class))).thenReturn(listResponse, emptyListResponse);
             CloseableHttpResponse deleteResponse = mock(CloseableHttpResponse.class);
             when(deleteResponse.getEntity()).thenReturn(null);
+            StatusLine deleteStatusLine = mock(StatusLine.class);
+            when(deleteStatusLine.getStatusCode()).thenReturn(204);
+            when(deleteResponse.getStatusLine()).thenReturn(deleteStatusLine);
             when(httpClient.execute(any(HttpDelete.class))).thenReturn(deleteResponse);
 
             ConnectorConfig config = new ConnectorConfig();
@@ -362,6 +372,23 @@ class KafkaConnectorSystemServiceImplUnitTest {
     }
 
     @Test
+    void deleteConnectorThrowsIOExceptionOnNon2xxResponse() throws Exception {
+        setField(service, "kafkaConnectUrl", "http://localhost:8083");
+        AdminClient adminClient = mock(AdminClient.class);
+        setField(service, "adminClient", adminClient);
+
+        try (MockedStatic<HttpClients> mockedHttpClients = org.mockito.Mockito.mockStatic(HttpClients.class)) {
+            CloseableHttpClient httpClient = mock(CloseableHttpClient.class);
+            mockedHttpClients.when(HttpClients::createDefault).thenReturn(httpClient);
+            CloseableHttpResponse errorResponse = httpResponse("{\"error\":\"failed\"}", 500);
+            when(httpClient.execute(any(HttpDelete.class))).thenReturn(errorResponse);
+
+            assertThrows(IOException.class, () -> service.deleteConnector("c1", true));
+            verify(adminClient, never()).deleteTopics(anyList());
+        }
+    }
+
+    @Test
     void getConnectorReturnsNullForEmptyPayload() throws Exception {
         setField(service, "kafkaConnectUrl", "http://localhost:8083");
 
@@ -377,15 +404,15 @@ class KafkaConnectorSystemServiceImplUnitTest {
     }
 
     @Test
-    void loadKafkaConfigurationReadsWaterAndLegacyKeys() throws Exception {
+    void loadKafkaConfigurationReadsWaterKeys() throws Exception {
         Map<String, String> values = new HashMap<>();
         values.put("it.water.connectors.kafka.bootstrap.servers", "kafka:9092");
         values.put("it.water.connectors.kafka.connect.url", "connect-host:8083");
         values.put("it.water.connectors.kafka.system.max.consumer.threads", "3");
-        values.put(KafkaConnectorConstants.HYPERIOT_KAFKA_REACTOR_PROP_MAX_CONSUMER_THREADS, "2");
-        values.put(KafkaConnectorConstants.HYPERIOT_KAFKA_SYSTEM_CONSUMER_POLL_MS, "750");
+        values.put(KafkaConnectorConstants.WATER_KAFKA_REACTOR_PROP_MAX_CONSUMER_THREADS, "2");
+        values.put(KafkaConnectorConstants.WATER_KAFKA_SYSTEM_CONSUMER_POLL_MS, "750");
         values.put("it.water.connectors.kafka.consumer.security.protocol", "SASL_SSL");
-        values.put(KafkaConnectorConstants.HYPERIOT_KAFKA_PROPS_PRODUCER_PREFIX + ".ssl.key.password", "secret");
+        values.put(KafkaConnectorConstants.WATER_KAFKA_PROPS_PRODUCER_PREFIX + ".ssl.key.password", "secret");
 
         ApplicationProperties props = mockAppProperties(values);
         Method loadMethod = KafkaConnectorSystemServiceImpl.class.getDeclaredMethod("loadKafkaConfiguration", ApplicationProperties.class);
@@ -403,9 +430,9 @@ class KafkaConnectorSystemServiceImplUnitTest {
         assertEquals("kafka:9092", adminProps.getProperty("bootstrap.servers"));
         assertEquals("SASL_SSL", consumerProps.getProperty("security.protocol"));
         assertEquals("secret", producerProps.getProperty("ssl.key.password"));
-        assertEquals("3", connectorProps.getProperty(KafkaConnectorConstants.HYPERIOT_KAFKA_SYSTEM_CONSUMER_MAX_THREADS));
-        assertEquals("2", connectorProps.getProperty(KafkaConnectorConstants.HYPERIOT_KAFKA_REACTOR_PROP_MAX_CONSUMER_THREADS));
-        assertEquals("750", systemConsumerProps.getProperty(KafkaConnectorConstants.HYPERIOT_KAFKA_SYSTEM_CONSUMER_POLL_MS));
+        assertEquals("3", connectorProps.getProperty(KafkaConnectorConstants.WATER_KAFKA_SYSTEM_CONSUMER_MAX_THREADS));
+        assertEquals("2", connectorProps.getProperty(KafkaConnectorConstants.WATER_KAFKA_REACTOR_PROP_MAX_CONSUMER_THREADS));
+        assertEquals("750", systemConsumerProps.getProperty(KafkaConnectorConstants.WATER_KAFKA_SYSTEM_CONSUMER_POLL_MS));
         assertEquals("http://connect-host:8083", getField(service, "kafkaConnectUrl", String.class));
     }
 
@@ -439,7 +466,7 @@ class KafkaConnectorSystemServiceImplUnitTest {
     @Test
     void getClusterSystemTopicUsesConfiguredLayer() throws Exception {
         setField(service, "layerName", "production");
-        assertEquals("hyperiot_layer_production", service.getClusterSystemTopic());
+        assertEquals("water_layer_production", service.getClusterSystemTopic());
     }
 
     private void invokeNotify(KafkaMessage message) throws Exception {
@@ -449,10 +476,17 @@ class KafkaConnectorSystemServiceImplUnitTest {
     }
 
     private CloseableHttpResponse httpResponse(String body) throws IOException {
+        return httpResponse(body, 200);
+    }
+
+    private CloseableHttpResponse httpResponse(String body, int statusCode) throws IOException {
         CloseableHttpResponse response = mock(CloseableHttpResponse.class);
         HttpEntity entity = mock(HttpEntity.class);
         when(entity.getContent()).thenReturn(new ByteArrayInputStream(body.getBytes(StandardCharsets.UTF_8)));
         when(response.getEntity()).thenReturn(entity);
+        StatusLine statusLine = mock(StatusLine.class);
+        when(statusLine.getStatusCode()).thenReturn(statusCode);
+        when(response.getStatusLine()).thenReturn(statusLine);
         return response;
     }
 

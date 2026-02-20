@@ -1,36 +1,29 @@
 package it.water.connectors.kafka.model;
+
 import it.water.core.validation.annotations.NoMalitiusCode;
+import lombok.Getter;
+
+@Getter
 public class KafkaMessage {
     private byte[] key;
     private byte[] payload;
     @NoMalitiusCode
     private String topic;
     private int partition = -1;
+
     public KafkaMessage(byte[] key, String topic, byte[] payload) {
-        super();
         this.key = key;
         this.payload = payload;
         this.topic = topic;
     }
+
     public KafkaMessage(byte[] key, String topic, int partition, byte[] payload) {
-        super();
         this.key = key;
         this.payload = payload;
         this.topic = topic;
         this.partition = partition;
     }
-    public byte[] getKey() {
-        return key;
-    }
-    public byte[] getPayload() {
-        return payload;
-    }
-    public String getTopic() {
-        return topic;
-    }
-    public int getPartition() {
-        return partition;
-    }
+
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
@@ -41,9 +34,11 @@ public class KafkaMessage {
             sb.append(" MESSAGE IS:").append(new String(payload));
         return sb.toString();
     }
+
     public static KafkaMessage from(String topic, byte[] key, byte[] payload) {
         return new KafkaMessage(key, topic, payload);
     }
+
     public static KafkaMessage from(String topic, byte[] key, byte[] payload, int partition) {
         return new KafkaMessage(key, topic, partition, payload);
     }

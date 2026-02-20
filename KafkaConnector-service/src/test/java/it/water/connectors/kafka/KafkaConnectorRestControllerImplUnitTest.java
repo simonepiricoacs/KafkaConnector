@@ -23,13 +23,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import javax.ws.rs.core.Response;
 import java.io.IOException;
-import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -61,7 +59,8 @@ class KafkaConnectorRestControllerImplUnitTest {
     void addConnectorSuccess() throws IOException {
         ConnectorConfig config = new ConnectorConfig();
         config.setName("my-connector");
-        KafkaConnector connector = new KafkaConnector("my-connector");
+        KafkaConnector connector = new KafkaConnector();
+        connector.setName("my-connector");
 
         when(kafkaConnectorApi.addNewConnector("my-connector", config)).thenReturn(connector);
 
@@ -86,7 +85,8 @@ class KafkaConnectorRestControllerImplUnitTest {
     @Test
     void updateConnectorSuccess() throws IOException {
         ConnectorConfig config = new ConnectorConfig();
-        KafkaConnector connector = new KafkaConnector("my-connector");
+        KafkaConnector connector = new KafkaConnector();
+        connector.setName("my-connector");
         when(kafkaConnectorApi.updateConnector("my-connector", config)).thenReturn(connector);
 
         Response response = restController.updateConnector("my-connector", config);
@@ -228,12 +228,4 @@ class KafkaConnectorRestControllerImplUnitTest {
         assertEquals("acl-del-error", deleteError.getEntity());
     }
 
-    @Test
-    void getEntityServiceReturnsKafkaApi() throws Exception {
-        Method method = KafkaConnectorRestControllerImpl.class.getDeclaredMethod("getEntityService");
-        method.setAccessible(true);
-        Object service = method.invoke(restController);
-        assertNotNull(service);
-        assertSame(kafkaConnectorApi, service);
-    }
 }

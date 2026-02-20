@@ -2,7 +2,6 @@ package it.water.connectors.kafka.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import it.water.connectors.kafka.api.KafkaConnectorRepository;
 import it.water.connectors.kafka.api.KafkaConnectorSystemApi;
 import it.water.connectors.kafka.api.KafkaMessageReceiver;
 import it.water.connectors.kafka.api.KafkaPartitionAssignListener;
@@ -22,8 +21,7 @@ import it.water.core.api.interceptors.OnDeactivate;
 import it.water.core.api.registry.filter.ComponentFilterBuilder;
 import it.water.core.interceptors.annotations.FrameworkComponent;
 import it.water.core.interceptors.annotations.Inject;
-import it.water.repository.service.BaseEntitySystemServiceImpl;
-import lombok.Getter;
+import it.water.core.service.BaseSystemServiceImpl;
 import lombok.Setter;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpDelete;
@@ -76,7 +74,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -86,12 +83,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
 @FrameworkComponent
-public class KafkaConnectorSystemServiceImpl extends BaseEntitySystemServiceImpl<KafkaConnector> implements KafkaConnectorSystemApi {
-
-    @Inject
-    @Getter
-    @Setter
-    private KafkaConnectorRepository repository;
+public class KafkaConnectorSystemServiceImpl extends BaseSystemServiceImpl implements KafkaConnectorSystemApi {
 
     @Inject
     @Setter
@@ -123,7 +115,6 @@ public class KafkaConnectorSystemServiceImpl extends BaseEntitySystemServiceImpl
     private Scheduler reactorScheduler;
 
     public KafkaConnectorSystemServiceImpl() {
-        super(KafkaConnector.class);
         this.kcts = new CopyOnWriteArrayList<>();
         this.messageReceivers = new ConcurrentHashMap<>();
         this.consumerProperties = new Properties();
@@ -148,13 +139,13 @@ public class KafkaConnectorSystemServiceImpl extends BaseEntitySystemServiceImpl
             }
             this.kafkaSystemConsumerMaxThreads = Integer.parseInt(
                 connectorProperties.getProperty(
-                    KafkaConnectorConstants.HYPERIOT_KAFKA_SYSTEM_CONSUMER_MAX_THREADS,
+                    KafkaConnectorConstants.WATER_KAFKA_SYSTEM_CONSUMER_MAX_THREADS,
                     "5"
                 )
             );
             int reactorMaxThreads = Integer.parseInt(
                 connectorProperties.getProperty(
-                    KafkaConnectorConstants.HYPERIOT_KAFKA_REACTOR_PROP_MAX_CONSUMER_THREADS,
+                    KafkaConnectorConstants.WATER_KAFKA_REACTOR_PROP_MAX_CONSUMER_THREADS,
                     "1"
                 )
             );
@@ -440,6 +431,9 @@ public class KafkaConnectorSystemServiceImpl extends BaseEntitySystemServiceImpl
         if (this.adminClient == null) {
             return null;
         }
+        if (topics.length != numPartitions.length || topics.length != numReplicas.length) {
+            return null;
+        }
         List<NewTopic> kafkaTopics = new ArrayList<>();
         for (int i = 0; i < topics.length; i++) {
             kafkaTopics.add(new NewTopic(topics[i], numPartitions[i], numReplicas[i]));
@@ -461,9 +455,10 @@ public class KafkaConnectorSystemServiceImpl extends BaseEntitySystemServiceImpl
             return null;
         }
         List<AclBinding> acls = new ArrayList<>();
+        String principal = this.resolveAclPrincipal(username);
         for (KafkaPermission permission : permissions.values()) {
             ResourcePattern topicPattern = new ResourcePattern(ResourceType.TOPIC, permission.getTopic(), permission.getPatternType());
-            AccessControlEntry aclEntry = new AccessControlEntry("User:" + username, "*", permission.getAclOperation(), permission.getAclPermissionType());
+            AccessControlEntry aclEntry = new AccessControlEntry(principal, "*", permission.getAclOperation(), permission.getAclPermissionType());
             acls.add(new AclBinding(topicPattern, aclEntry));
         }
         return this.adminClient.createAcls(acls);
@@ -475,9 +470,10 @@ public class KafkaConnectorSystemServiceImpl extends BaseEntitySystemServiceImpl
             return null;
         }
         List<AclBindingFilter> acls = new ArrayList<>();
+        String principal = this.resolveAclPrincipal(username);
         for (KafkaPermission permission : permissions.values()) {
             ResourcePatternFilter topicPattern = new ResourcePatternFilter(ResourceType.TOPIC, permission.getTopic(), permission.getPatternType());
-            AccessControlEntryFilter aclEntry = new AccessControlEntryFilter("User:" + username, "*", permission.getAclOperation(), permission.getAclPermissionType());
+            AccessControlEntryFilter aclEntry = new AccessControlEntryFilter(principal, "*", permission.getAclOperation(), permission.getAclPermissionType());
             acls.add(new AclBindingFilter(topicPattern, aclEntry));
         }
         return this.adminClient.deleteAcls(acls);
@@ -539,13 +535,21 @@ public class KafkaConnectorSystemServiceImpl extends BaseEntitySystemServiceImpl
 
     @Override
     public String getClusterSystemTopic() {
-        return KafkaConnectorConstants.HYPERIOT_KAFKA_OSGI_BASIC_TOPIC + "_" + this.layerName;
+        return KafkaConnectorConstants.WATER_KAFKA_OSGI_BASIC_TOPIC + "_" + this.layerName;
     }
 
     private List<String> createBasicTopics() {
         String[] topics = new String[2];
+        int[] numPartitions = new int[2];
+        short[] numReplicas = new short[2];
         topics[0] = getClusterSystemTopic();
         topics[1] = getClusterSystemTopic() + "_" + this.nodeId;
+        int partitions = Math.max(1, this.kafkaSystemConsumerMaxThreads);
+        numPartitions[0] = partitions;
+        numPartitions[1] = partitions;
+        numReplicas[0] = (short) 1;
+        numReplicas[1] = (short) 1;
+        this.adminCreateTopic(topics, numPartitions, numReplicas);
         return Arrays.asList(topics);
     }
 
@@ -634,24 +638,24 @@ public class KafkaConnectorSystemServiceImpl extends BaseEntitySystemServiceImpl
             ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG,
             applicationProperties,
             "it.water.connectors.kafka.bootstrap.servers",
-            KafkaConnectorConstants.HYPERIOT_KAFKA_PROPS_GLOBAL_PREFIX + ".bootstrap.servers",
-            KafkaConnectorConstants.HYPERIOT_KAFKA_PROPS_CONSUMER_PREFIX + ".bootstrap.servers"
+            KafkaConnectorConstants.WATER_KAFKA_PROPS_GLOBAL_PREFIX + ".bootstrap.servers",
+            KafkaConnectorConstants.WATER_KAFKA_PROPS_CONSUMER_PREFIX + ".bootstrap.servers"
         );
         copyKafkaProperty(
             producerProperties,
             ProducerConfig.BOOTSTRAP_SERVERS_CONFIG,
             applicationProperties,
             "it.water.connectors.kafka.bootstrap.servers",
-            KafkaConnectorConstants.HYPERIOT_KAFKA_PROPS_GLOBAL_PREFIX + ".bootstrap.servers",
-            KafkaConnectorConstants.HYPERIOT_KAFKA_PROPS_PRODUCER_PREFIX + ".bootstrap.servers"
+            KafkaConnectorConstants.WATER_KAFKA_PROPS_GLOBAL_PREFIX + ".bootstrap.servers",
+            KafkaConnectorConstants.WATER_KAFKA_PROPS_PRODUCER_PREFIX + ".bootstrap.servers"
         );
         copyKafkaProperty(
             adminProperties,
             AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG,
             applicationProperties,
             "it.water.connectors.kafka.bootstrap.servers",
-            KafkaConnectorConstants.HYPERIOT_KAFKA_PROPS_GLOBAL_PREFIX + ".bootstrap.servers",
-            KafkaConnectorConstants.HYPERIOT_KAFKA_PROPS_ADMIN_PREFIX + ".bootstrap.servers"
+            KafkaConnectorConstants.WATER_KAFKA_PROPS_GLOBAL_PREFIX + ".bootstrap.servers",
+            KafkaConnectorConstants.WATER_KAFKA_PROPS_ADMIN_PREFIX + ".bootstrap.servers"
         );
 
         if (!consumerProperties.containsKey(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG)) {
@@ -681,30 +685,30 @@ public class KafkaConnectorSystemServiceImpl extends BaseEntitySystemServiceImpl
                 key,
                 applicationProperties,
                 "it.water.connectors.kafka.consumer." + key,
-                KafkaConnectorConstants.HYPERIOT_KAFKA_PROPS_CONSUMER_PREFIX + "." + key,
-                KafkaConnectorConstants.HYPERIOT_KAFKA_PROPS_GLOBAL_PREFIX + "." + key
+                KafkaConnectorConstants.WATER_KAFKA_PROPS_CONSUMER_PREFIX + "." + key,
+                KafkaConnectorConstants.WATER_KAFKA_PROPS_GLOBAL_PREFIX + "." + key
             );
             copyKafkaProperty(
                 producerProperties,
                 key,
                 applicationProperties,
                 "it.water.connectors.kafka.producer." + key,
-                KafkaConnectorConstants.HYPERIOT_KAFKA_PROPS_PRODUCER_PREFIX + "." + key,
-                KafkaConnectorConstants.HYPERIOT_KAFKA_PROPS_GLOBAL_PREFIX + "." + key
+                KafkaConnectorConstants.WATER_KAFKA_PROPS_PRODUCER_PREFIX + "." + key,
+                KafkaConnectorConstants.WATER_KAFKA_PROPS_GLOBAL_PREFIX + "." + key
             );
             copyKafkaProperty(
                 adminProperties,
                 key,
                 applicationProperties,
                 "it.water.connectors.kafka.admin." + key,
-                KafkaConnectorConstants.HYPERIOT_KAFKA_PROPS_ADMIN_PREFIX + "." + key,
-                KafkaConnectorConstants.HYPERIOT_KAFKA_PROPS_GLOBAL_PREFIX + "." + key
+                KafkaConnectorConstants.WATER_KAFKA_PROPS_ADMIN_PREFIX + "." + key,
+                KafkaConnectorConstants.WATER_KAFKA_PROPS_GLOBAL_PREFIX + "." + key
             );
         }
 
         this.kafkaConnectUrl = firstNonBlank(
             readProperty(applicationProperties, "it.water.connectors.kafka.connect.url"),
-            readProperty(applicationProperties, KafkaConnectorConstants.HYPERIOT_KAFKA_OSGI_CONNECT_URL),
+            readProperty(applicationProperties, KafkaConnectorConstants.WATER_KAFKA_OSGI_CONNECT_URL),
             "http://localhost:8083"
         );
         if (!this.kafkaConnectUrl.startsWith("http://") && !this.kafkaConnectUrl.startsWith("https://")) {
@@ -712,26 +716,26 @@ public class KafkaConnectorSystemServiceImpl extends BaseEntitySystemServiceImpl
         }
 
         connectorProperties.put(
-            KafkaConnectorConstants.HYPERIOT_KAFKA_SYSTEM_CONSUMER_MAX_THREADS,
+            KafkaConnectorConstants.WATER_KAFKA_SYSTEM_CONSUMER_MAX_THREADS,
             firstNonBlank(
                 readProperty(applicationProperties, "it.water.connectors.kafka.system.max.consumer.threads"),
-                readProperty(applicationProperties, KafkaConnectorConstants.HYPERIOT_KAFKA_SYSTEM_CONSUMER_MAX_THREADS),
+                readProperty(applicationProperties, KafkaConnectorConstants.WATER_KAFKA_SYSTEM_CONSUMER_MAX_THREADS),
                 "5"
             )
         );
         connectorProperties.put(
-            KafkaConnectorConstants.HYPERIOT_KAFKA_REACTOR_PROP_MAX_CONSUMER_THREADS,
+            KafkaConnectorConstants.WATER_KAFKA_REACTOR_PROP_MAX_CONSUMER_THREADS,
             firstNonBlank(
                 readProperty(applicationProperties, "it.water.connectors.kafka.reactor.max.consumer.threads"),
-                readProperty(applicationProperties, KafkaConnectorConstants.HYPERIOT_KAFKA_REACTOR_PROP_MAX_CONSUMER_THREADS),
+                readProperty(applicationProperties, KafkaConnectorConstants.WATER_KAFKA_REACTOR_PROP_MAX_CONSUMER_THREADS),
                 "1"
             )
         );
         systemConsumerProperties.put(
-            KafkaConnectorConstants.HYPERIOT_KAFKA_SYSTEM_CONSUMER_POLL_MS,
+            KafkaConnectorConstants.WATER_KAFKA_SYSTEM_CONSUMER_POLL_MS,
             firstNonBlank(
                 readProperty(applicationProperties, "it.water.connectors.kafka.system.consumer.poll.ms"),
-                readProperty(applicationProperties, KafkaConnectorConstants.HYPERIOT_KAFKA_SYSTEM_CONSUMER_POLL_MS),
+                readProperty(applicationProperties, KafkaConnectorConstants.WATER_KAFKA_SYSTEM_CONSUMER_POLL_MS),
                 "500"
             )
         );
@@ -782,18 +786,45 @@ public class KafkaConnectorSystemServiceImpl extends BaseEntitySystemServiceImpl
                 request.addHeader("Content-Type", "application/json");
             }
             try (CloseableHttpResponse response = client.execute(request)) {
-                if (response.getEntity() == null) {
-                    return null;
+                int statusCode = response.getStatusLine() != null ? response.getStatusLine().getStatusCode() : 0;
+                String responseBody = readResponseBody(response);
+                if (statusCode >= 200 && statusCode < 300) {
+                    return responseBody;
                 }
-                try (BufferedReader reader = new BufferedReader(new InputStreamReader(response.getEntity().getContent(), StandardCharsets.UTF_8))) {
-                    StringBuilder result = new StringBuilder();
-                    String line;
-                    while ((line = reader.readLine()) != null) {
-                        result.append(line);
-                    }
-                    return result.toString();
+                StringBuilder errorMessage = new StringBuilder();
+                errorMessage
+                    .append("Kafka Connect request failed [")
+                    .append(statusCode)
+                    .append("] ")
+                    .append(request.getMethod())
+                    .append(" ")
+                    .append(request.getURI());
+                if (responseBody != null && !responseBody.isBlank()) {
+                    errorMessage.append(" - ").append(responseBody);
                 }
+                throw new IOException(errorMessage.toString());
             }
         }
+    }
+
+    private String readResponseBody(CloseableHttpResponse response) throws IOException {
+        if (response.getEntity() == null) {
+            return "";
+        }
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(response.getEntity().getContent(), StandardCharsets.UTF_8))) {
+            StringBuilder result = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                result.append(line);
+            }
+            return result.toString();
+        }
+    }
+
+    private String resolveAclPrincipal(String username) {
+        if (username == null) {
+            return null;
+        }
+        return username.trim();
     }
 }

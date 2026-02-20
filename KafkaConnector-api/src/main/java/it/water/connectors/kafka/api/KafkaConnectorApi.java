@@ -1,9 +1,9 @@
 package it.water.connectors.kafka.api;
 
 import it.water.connectors.kafka.model.ConnectorConfig;
-import it.water.connectors.kafka.model.KafkaPermission;
 import it.water.connectors.kafka.model.KafkaConnector;
-import it.water.core.api.service.BaseEntityApi;
+import it.water.connectors.kafka.model.KafkaPermission;
+import it.water.core.api.service.BaseApi;
 import org.apache.kafka.clients.admin.CreateAclsResult;
 import org.apache.kafka.clients.admin.CreateTopicsResult;
 import org.apache.kafka.clients.admin.DeleteAclsResult;
@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 
-public interface KafkaConnectorApi extends BaseEntityApi<KafkaConnector> {
+public interface KafkaConnectorApi extends BaseApi {
     @SuppressWarnings("rawtypes")
     Flux<ReceiverRecord<byte[], byte[]>> consumeReactive(String kafkaGroupId, List<String> topics, long pollTime, Class keyDeserializerClass, Class valueDeserializerClass) throws ClassNotFoundException;
 

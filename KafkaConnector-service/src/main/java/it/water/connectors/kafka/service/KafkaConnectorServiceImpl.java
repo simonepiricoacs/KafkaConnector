@@ -3,12 +3,12 @@ package it.water.connectors.kafka.service;
 import it.water.connectors.kafka.api.KafkaConnectorApi;
 import it.water.connectors.kafka.api.KafkaConnectorSystemApi;
 import it.water.connectors.kafka.model.ConnectorConfig;
-import it.water.connectors.kafka.model.KafkaPermission;
 import it.water.connectors.kafka.model.KafkaConnector;
+import it.water.connectors.kafka.model.KafkaPermission;
 import it.water.core.api.registry.ComponentRegistry;
 import it.water.core.interceptors.annotations.FrameworkComponent;
 import it.water.core.interceptors.annotations.Inject;
-import it.water.repository.service.BaseEntityServiceImpl;
+import it.water.core.service.BaseServiceImpl;
 import lombok.Getter;
 import lombok.Setter;
 import org.apache.kafka.clients.admin.CreateAclsResult;
@@ -24,7 +24,7 @@ import java.util.Map;
 import java.util.regex.Pattern;
 
 @FrameworkComponent
-public class KafkaConnectorServiceImpl extends BaseEntityServiceImpl<KafkaConnector> implements KafkaConnectorApi {
+public class KafkaConnectorServiceImpl extends BaseServiceImpl implements KafkaConnectorApi {
 
     @Inject
     @Getter
@@ -35,10 +35,6 @@ public class KafkaConnectorServiceImpl extends BaseEntityServiceImpl<KafkaConnec
     @Getter
     @Setter
     private ComponentRegistry componentRegistry;
-
-    public KafkaConnectorServiceImpl() {
-        super(KafkaConnector.class);
-    }
 
     @SuppressWarnings("rawtypes")
     @Override

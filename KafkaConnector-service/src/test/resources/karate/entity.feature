@@ -1,11 +1,11 @@
 # Generated with Water Generator
-# The Goal of feature test is to ensure the correct format of json responses
-# If you want to perform functional test please refer to ApiTest
-Feature: Check KafkaConnector Entity Rest Api Response
+# The goal of this feature test is keeping a lightweight REST smoke-check.
+Feature: Check KafkaConnector status endpoint
 
-  Scenario: List KafkaConnector entities
-    Given header Accept = 'application/json'
-    Given url serviceBaseUrl + '/water/kafka'
+  Scenario: KafkaConnector status endpoint is reachable
+    Given header Content-Type = 'application/json'
+    And header Accept = 'application/json'
+    Given url serviceBaseUrl + '/water/kafka/module/status'
     When method GET
     Then status 200
-    And match response contains { results: '#[]' }
+    And match response contains 'Water Kafka Connector Module works!'

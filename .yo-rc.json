@@ -13,7 +13,7 @@
 			"projectTechnology": "water",
 			"hasRestServices": true,
 			"restContextRoot": "/kafka",
-			"hasModel": true,
+			"hasModel": false,
 			"modelName": "KafkaConnector",
 			"modelNameLowerCase": "kafkaConnector",
 			"isProtectedEntity": false,
@@ -45,13 +45,6 @@
 			"publishRepoName": "public-water-repository",
 			"publishRepoUrl": "https://nexus.acsoftware.it/nexus/repository/maven-water/",
 			"publishRepoHasCredentials": true,
-			"entities": [
-						{
-									"modelName": "KafkaConnector",
-									"isProtectedEntity": false,
-									"isOwnedEntity": false
-						}
-			],
 			"parent-project": true
 }
 }

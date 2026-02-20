@@ -40,20 +40,21 @@ public class KafkaConsumerThread implements Runnable {
         this.notifierExecutor = notifierExecutor;
         this.consumer = new KafkaConsumer<>(props);
         this.topics = topics;
-        this.messageHandler = messageHandler;
+        this.messageHandler = messageHandler != null ? messageHandler : ignored -> { };
     }
 
     @Override
     public void run() {
         if (topics == null || topics.isEmpty()) {
             LOG.warn("No topics configured for Kafka consumer thread");
+            consumer.close();
             return;
         }
         consumer.subscribe(topics);
 
         long pollDurationMillis = 500L;
         try {
-            Object configured = systemConsumerProperties.get(KafkaConnectorConstants.HYPERIOT_KAFKA_SYSTEM_CONSUMER_POLL_MS);
+            Object configured = systemConsumerProperties.get(KafkaConnectorConstants.WATER_KAFKA_SYSTEM_CONSUMER_POLL_MS);
             if (configured != null) {
                 pollDurationMillis = Long.parseLong(String.valueOf(configured));
             }
@@ -85,7 +86,26 @@ public class KafkaConsumerThread implements Runnable {
     }
 
     public void notifyKafkaMessage(KafkaMessage message) {
-        notifierExecutor.execute(() -> messageHandler.accept(message));
+        if (message == null) {
+            return;
+        }
+        Runnable notificationTask = () -> {
+            try {
+                messageHandler.accept(message);
+            } catch (Throwable t) {
+                LOG.error("Error while notifying kafka message", t);
+            }
+        };
+        if (notifierExecutor == null) {
+            notificationTask.run();
+            return;
+        }
+        try {
+            notifierExecutor.execute(notificationTask);
+        } catch (Throwable t) {
+            LOG.error("Error while submitting kafka message notification task", t);
+            notificationTask.run();
+        }
     }
 
     public void stop() {

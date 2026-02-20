@@ -1,18 +1,17 @@
 package it.water.connectors.kafka.model;
+
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import it.water.core.validation.annotations.NoMalitiusCode;
-@JsonIgnoreProperties
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+@Getter
+@Setter
+@NoArgsConstructor
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class ConnectorTask {
     @NoMalitiusCode
     private String connector;
     private int task;
-    public String getConnector() {
-        return connector;
-    }
-    public void setConnector(String connector) {
-        this.connector = connector;
-    }
-    public int getTask() {
-        return task;
-    }
 }
