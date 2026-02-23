@@ -1,0 +1,25 @@
+dependencies {
+    // SLF4J
+    implementation group: 'org.slf4j', name: 'slf4j-api', version: project.slf4jVersion
+    // Lombok
+    implementation group: 'org.projectlombok', name: 'lombok', version: project.lombokVersion
+    annotationProcessor 'org.projectlombok:lombok:' + project.lombokVersion
+    // Atteo
+    implementation 'org.atteo.classindex:classindex:' + project.atteoClassIndexVersion
+    annotationProcessor('org.atteo.classindex:classindex:' + project.atteoClassIndexVersion)
+    // Jackson JSON
+    implementation group: 'com.fasterxml.jackson.jaxrs', name: 'jackson-jaxrs-json-provider', version: project.jacksonVersion
+    // Water Validation (@NoMalitiusCode)
+    implementation group: 'jakarta.validation', name: 'jakarta.validation-api', version: project.jakartaValidationVersion
+    implementation group: 'it.water.core', name: 'Core-validation', version: project.waterVersion
+    // Kafka clients (PatternType, AclOperation, AclPermissionType)
+    implementation group: 'org.apache.kafka', name: 'kafka-clients', version: project.kafkaClientsVersion
+}
+
+publishing {
+    publications {
+        water(MavenPublication) {
+            from components.java
+        }
+    }
+}
