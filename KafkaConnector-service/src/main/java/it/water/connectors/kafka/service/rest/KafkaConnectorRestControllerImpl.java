@@ -87,7 +87,9 @@ public class KafkaConnectorRestControllerImpl implements KafkaConnectorRestApi {
 
     @Override
     public Response createMultipleTopics(TopicConfig[] topicsConfig) {
-        log.debug("In REST Service POST /kafka/topics: {}", Arrays.toString(topicsConfig));
+        if (log.isDebugEnabled()) {
+            log.debug("In REST Service POST /kafka/topics: {}", Arrays.toString(topicsConfig));
+        }
         try {
             String[] topics = new String[topicsConfig.length];
             int[] numPartitions = new int[topicsConfig.length];
@@ -106,7 +108,9 @@ public class KafkaConnectorRestControllerImpl implements KafkaConnectorRestApi {
 
     @Override
     public Response dropTopics(String[] topics) {
-        log.debug("In REST Service DELETE /kafka/topics: {}", Arrays.toString(topics));
+        if (log.isDebugEnabled()) {
+            log.debug("In REST Service DELETE /kafka/topics: {}", Arrays.toString(topics));
+        }
         try {
             DeleteTopicsResult result = kafkaConnectorApi.adminDropTopic(Arrays.asList(topics));
             return Response.ok().entity(result).build();

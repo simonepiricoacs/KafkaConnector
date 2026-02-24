@@ -8,12 +8,12 @@ import org.slf4j.LoggerFactory;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-public final class KafkaGloabalNotifier {
-    private static final Logger LOG = LoggerFactory.getLogger(KafkaGloabalNotifier.class);
+public final class KafkaGlobalNotifier {
+    private static final Logger LOG = LoggerFactory.getLogger(KafkaGlobalNotifier.class);
 
     private static final List<KafkaSystemMessageNotifier> NOTIFIERS = new CopyOnWriteArrayList<>();
 
-    private KafkaGloabalNotifier() {
+    private KafkaGlobalNotifier() {
     }
 
     public static void registerNotifier(KafkaSystemMessageNotifier notifier) {

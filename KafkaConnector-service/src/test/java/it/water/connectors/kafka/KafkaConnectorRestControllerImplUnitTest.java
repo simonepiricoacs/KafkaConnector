@@ -1,11 +1,7 @@
 package it.water.connectors.kafka;
 
 import it.water.connectors.kafka.api.KafkaConnectorApi;
-import it.water.connectors.kafka.model.ACLConfig;
-import it.water.connectors.kafka.model.ConnectorConfig;
-import it.water.connectors.kafka.model.KafkaPermission;
-import it.water.connectors.kafka.model.KafkaConnector;
-import it.water.connectors.kafka.model.TopicConfig;
+import it.water.connectors.kafka.model.*;
 import it.water.connectors.kafka.service.rest.KafkaConnectorRestControllerImpl;
 import org.apache.kafka.clients.admin.CreateAclsResult;
 import org.apache.kafka.clients.admin.CreateTopicsResult;
@@ -29,15 +25,8 @@ import java.util.HashMap;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyMap;
-import static org.mockito.ArgumentMatchers.anyShort;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class KafkaConnectorRestControllerImplUnitTest {

@@ -1,8 +1,8 @@
 package it.water.connectors.kafka;
 
-import it.water.connectors.kafka.api.KafkaSystemMessageNotifier;
 import it.water.connectors.kafka.api.KafkaMessageReceiver;
-import it.water.connectors.kafka.consumer.KafkaGloabalNotifier;
+import it.water.connectors.kafka.api.KafkaSystemMessageNotifier;
+import it.water.connectors.kafka.consumer.KafkaGlobalNotifier;
 import it.water.connectors.kafka.consumer.KafkaOSGISystemNotifier;
 import it.water.connectors.kafka.model.KafkaMessage;
 import it.water.connectors.kafka.util.KafkaConnectorConstants;
@@ -17,53 +17,47 @@ import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 class KafkaNotifierUnitTest {
 
     @BeforeEach
     void clearBefore() {
-        KafkaGloabalNotifier.getRegisteredNotifiers().clear();
+        KafkaGlobalNotifier.getRegisteredNotifiers().clear();
     }
 
     @AfterEach
     void clearAfter() {
-        KafkaGloabalNotifier.getRegisteredNotifiers().clear();
+        KafkaGlobalNotifier.getRegisteredNotifiers().clear();
     }
 
     @Test
     void registerAndUnregisterNotifier() {
         KafkaSystemMessageNotifier notifier = mock(KafkaSystemMessageNotifier.class);
 
-        KafkaGloabalNotifier.registerNotifier(notifier);
-        KafkaGloabalNotifier.registerNotifier(null);
+        KafkaGlobalNotifier.registerNotifier(notifier);
+        KafkaGlobalNotifier.registerNotifier(null);
 
-        assertEquals(1, KafkaGloabalNotifier.getRegisteredNotifiers().size());
-        assertTrue(KafkaGloabalNotifier.getRegisteredNotifiers().contains(notifier));
+        assertEquals(1, KafkaGlobalNotifier.getRegisteredNotifiers().size());
+        assertTrue(KafkaGlobalNotifier.getRegisteredNotifiers().contains(notifier));
 
-        KafkaGloabalNotifier.unregisterNotifier(notifier);
-        KafkaGloabalNotifier.unregisterNotifier(null);
+        KafkaGlobalNotifier.unregisterNotifier(notifier);
+        KafkaGlobalNotifier.unregisterNotifier(null);
 
-        assertFalse(KafkaGloabalNotifier.getRegisteredNotifiers().contains(notifier));
+        assertFalse(KafkaGlobalNotifier.getRegisteredNotifiers().contains(notifier));
     }
 
     @Test
     void notifyKafkaMessageDispatchesToAllNotifiers() {
         KafkaSystemMessageNotifier notifierOne = mock(KafkaSystemMessageNotifier.class);
         KafkaSystemMessageNotifier notifierTwo = mock(KafkaSystemMessageNotifier.class);
-        KafkaGloabalNotifier.registerNotifier(notifierOne);
-        KafkaGloabalNotifier.registerNotifier(notifierTwo);
+        KafkaGlobalNotifier.registerNotifier(notifierOne);
+        KafkaGlobalNotifier.registerNotifier(notifierTwo);
 
         KafkaMessage message = KafkaMessage.from("topic-a", "k".getBytes(), "v".getBytes(), 1);
-        KafkaGloabalNotifier.notifyKafkaMessage(message);
+        KafkaGlobalNotifier.notifyKafkaMessage(message);
 
         verify(notifierOne, times(1)).notifyKafkaMessage(message);
         verify(notifierTwo, times(1)).notifyKafkaMessage(message);
@@ -73,13 +67,13 @@ class KafkaNotifierUnitTest {
     void notifyKafkaMessageContinuesWhenOneNotifierFails() {
         KafkaSystemMessageNotifier failingNotifier = mock(KafkaSystemMessageNotifier.class);
         KafkaSystemMessageNotifier notifierTwo = mock(KafkaSystemMessageNotifier.class);
-        KafkaGloabalNotifier.registerNotifier(failingNotifier);
-        KafkaGloabalNotifier.registerNotifier(notifierTwo);
+        KafkaGlobalNotifier.registerNotifier(failingNotifier);
+        KafkaGlobalNotifier.registerNotifier(notifierTwo);
 
         KafkaMessage message = KafkaMessage.from("topic-a", "k".getBytes(), "v".getBytes(), 1);
         doThrow(new RuntimeException("boom")).when(failingNotifier).notifyKafkaMessage(message);
 
-        KafkaGloabalNotifier.notifyKafkaMessage(message);
+        KafkaGlobalNotifier.notifyKafkaMessage(message);
 
         verify(failingNotifier, times(1)).notifyKafkaMessage(message);
         verify(notifierTwo, times(1)).notifyKafkaMessage(message);
@@ -90,12 +84,12 @@ class KafkaNotifierUnitTest {
         KafkaOSGISystemNotifier notifier = new KafkaOSGISystemNotifier();
 
         notifier.activate();
-        assertTrue(KafkaGloabalNotifier.getRegisteredNotifiers().contains(notifier));
+        assertTrue(KafkaGlobalNotifier.getRegisteredNotifiers().contains(notifier));
 
         notifier.notifyKafkaMessage(KafkaMessage.from("topic-b", null, "payload".getBytes()));
 
         notifier.deactivate();
-        assertFalse(KafkaGloabalNotifier.getRegisteredNotifiers().contains(notifier));
+        assertFalse(KafkaGlobalNotifier.getRegisteredNotifiers().contains(notifier));
     }
 
     @Test
@@ -115,7 +109,7 @@ class KafkaNotifierUnitTest {
         when(filterBuilder.createFilter(KafkaConnectorConstants.WATER_KAFKA_OSGI_KEY_FILTER, "k")).thenReturn(specificKeyFilter);
         when(specificKeyFilter.or(wildcardKeyFilter)).thenReturn(mergedKeyFilter);
         when(topicFilter.and(mergedKeyFilter)).thenReturn(finalFilter);
-        when(componentRegistry.findComponents(eq(KafkaMessageReceiver.class), eq(finalFilter))).thenReturn(Collections.singletonList(receiver));
+        when(componentRegistry.findComponents(KafkaMessageReceiver.class,finalFilter)).thenReturn(Collections.singletonList(receiver));
 
         setField(notifier, "componentRegistry", componentRegistry);
         setField(notifier, "componentFilterBuilder", filterBuilder);
