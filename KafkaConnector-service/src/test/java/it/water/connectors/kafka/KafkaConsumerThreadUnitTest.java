@@ -6,7 +6,6 @@ import it.water.connectors.kafka.util.KafkaConnectorConstants;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
-import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.WakeupException;
 import org.junit.jupiter.api.AfterEach;
@@ -28,11 +27,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyMap;
-import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.atLeastOnce;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 class KafkaConsumerThreadUnitTest {
 
@@ -114,9 +109,11 @@ class KafkaConsumerThreadUnitTest {
     void runFallsBackToDefaultPollDurationOnInvalidProperty() throws Exception {
         notifierExecutor = Executors.newSingleThreadExecutor();
 
+        CountDownLatch pollCalledLatch = new CountDownLatch(1);
         AtomicInteger pollCounter = new AtomicInteger();
         try (MockedConstruction<KafkaConsumer> construction = org.mockito.Mockito.mockConstruction(KafkaConsumer.class, (mock, context) -> {
             when(mock.poll(any(Duration.class))).thenAnswer(invocation -> {
+                pollCalledLatch.countDown();
                 if (pollCounter.getAndIncrement() > 0) {
                     throw new WakeupException();
                 }
@@ -136,7 +133,7 @@ class KafkaConsumerThreadUnitTest {
 
             Thread runner = new Thread(thread);
             runner.start();
-            Thread.sleep(100);
+            assertTrue(pollCalledLatch.await(2, TimeUnit.SECONDS));
             thread.stop();
             runner.join(2000);
 

@@ -1,27 +1,20 @@
 package it.water.connectors.kafka;
 
 import it.water.connectors.kafka.api.KafkaMessageReceiver;
+import it.water.connectors.kafka.consumer.KafkaGlobalNotifier;
 import it.water.connectors.kafka.model.ConnectorConfig;
+import it.water.connectors.kafka.model.KafkaConnector;
 import it.water.connectors.kafka.model.KafkaMessage;
 import it.water.connectors.kafka.model.KafkaPermission;
-import it.water.connectors.kafka.model.KafkaConnector;
 import it.water.connectors.kafka.service.KafkaConnectorSystemServiceImpl;
 import it.water.connectors.kafka.util.KafkaConnectorConstants;
 import it.water.core.api.bundle.ApplicationProperties;
 import org.apache.http.HttpEntity;
 import org.apache.http.StatusLine;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpDelete;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.client.methods.HttpPut;
+import org.apache.http.client.methods.*;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
-import org.apache.kafka.clients.admin.AdminClient;
-import org.apache.kafka.clients.admin.CreateAclsResult;
-import org.apache.kafka.clients.admin.CreateTopicsResult;
-import org.apache.kafka.clients.admin.DeleteAclsResult;
-import org.apache.kafka.clients.admin.DeleteTopicsResult;
+import org.apache.kafka.clients.admin.*;
 import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
@@ -47,40 +40,16 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
+import java.util.*;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.regex.Pattern;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.anyMap;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.atLeastOnce;
-import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 
 class KafkaConnectorSystemServiceImplUnitTest {
 
@@ -89,13 +58,13 @@ class KafkaConnectorSystemServiceImplUnitTest {
     @BeforeEach
     void setUp() {
         service = new KafkaConnectorSystemServiceImpl();
-        it.water.connectors.kafka.consumer.KafkaGloabalNotifier.getRegisteredNotifiers().clear();
+        KafkaGlobalNotifier.getRegisteredNotifiers().clear();
     }
 
     @AfterEach
     void tearDown() {
         service.stopConsumingFromKafka();
-        it.water.connectors.kafka.consumer.KafkaGloabalNotifier.getRegisteredNotifiers().clear();
+        KafkaGlobalNotifier.getRegisteredNotifiers().clear();
     }
 
     @Test
@@ -134,7 +103,7 @@ class KafkaConnectorSystemServiceImplUnitTest {
 
         verify(thread).stop();
         verify(executor).shutdown();
-        verify(executor).awaitTermination(eq(10L), eq(TimeUnit.SECONDS));
+        verify(executor).awaitTermination(10L, TimeUnit.SECONDS);
         verify(adminClient).close(Duration.ofSeconds(10));
         assertTrue(threads.isEmpty());
     }
@@ -268,6 +237,11 @@ class KafkaConnectorSystemServiceImplUnitTest {
         consumerProps.put("bootstrap.servers", "localhost:9092");
 
         KafkaMessageReceiver messageReceiver = mock(KafkaMessageReceiver.class);
+        CountDownLatch deliveredLatch = new CountDownLatch(1);
+        doAnswer(invocation -> {
+            deliveredLatch.countDown();
+            return null;
+        }).when(messageReceiver).receive(any(KafkaMessage.class));
         service.registerMessageReceiver(messageReceiver, "topic-a");
 
         ReceiverRecord<byte[], byte[]> receiverRecord = mock(ReceiverRecord.class);
@@ -290,6 +264,7 @@ class KafkaConnectorSystemServiceImplUnitTest {
                 org.apache.kafka.common.serialization.ByteArrayDeserializer.class
             );
 
+            assertTrue(deliveredLatch.await(2, TimeUnit.SECONDS));
             verify(messageReceiver, atLeastOnce()).receive(any(KafkaMessage.class));
         }
     }

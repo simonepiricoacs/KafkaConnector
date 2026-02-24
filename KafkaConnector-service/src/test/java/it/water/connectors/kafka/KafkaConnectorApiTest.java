@@ -1,28 +1,13 @@
 package it.water.connectors.kafka;
 
-import it.water.core.api.model.PaginableResult;
+import it.water.connectors.kafka.api.KafkaConnectorApi;
+import it.water.connectors.kafka.api.KafkaConnectorSystemApi;
 import it.water.core.api.bundle.Runtime;
-import it.water.core.api.model.Role;
-import it.water.core.api.role.RoleManager;
-import it.water.core.api.user.UserManager;
 import it.water.core.api.registry.ComponentRegistry;
-import it.water.core.api.repository.query.Query;
 import it.water.core.api.service.Service;
-import it.water.core.api.permission.PermissionManager;
-import it.water.core.testing.utils.bundle.TestRuntimeInitializer;
 import it.water.core.interceptors.annotations.Inject;
-import it.water.core.model.exceptions.ValidationException;
-import it.water.core.model.exceptions.WaterRuntimeException;
-import it.water.core.permission.exceptions.UnauthorizedException;
-import it.water.core.testing.utils.runtime.TestRuntimeUtils;
-
 import it.water.core.testing.utils.junit.WaterTestExtension;
-
-import it.water.connectors.kafka.api.*;
-import it.water.connectors.kafka.model.*;
-
 import lombok.Setter;
-
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 

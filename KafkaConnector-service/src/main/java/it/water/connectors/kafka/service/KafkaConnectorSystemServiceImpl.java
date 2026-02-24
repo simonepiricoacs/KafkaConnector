@@ -2,17 +2,13 @@ package it.water.connectors.kafka.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import it.water.connectors.kafka.api.KafkaConnectorSystemApi;
-import it.water.connectors.kafka.api.KafkaMessageReceiver;
-import it.water.connectors.kafka.api.KafkaPartitionAssignListener;
-import it.water.connectors.kafka.api.KafkaPartitionRevokeListener;
-import it.water.connectors.kafka.api.KafkaProducerPool;
+import it.water.connectors.kafka.api.*;
 import it.water.connectors.kafka.consumer.KafkaConsumerThread;
-import it.water.connectors.kafka.consumer.KafkaGloabalNotifier;
+import it.water.connectors.kafka.consumer.KafkaGlobalNotifier;
 import it.water.connectors.kafka.model.ConnectorConfig;
+import it.water.connectors.kafka.model.KafkaConnector;
 import it.water.connectors.kafka.model.KafkaMessage;
 import it.water.connectors.kafka.model.KafkaPermission;
-import it.water.connectors.kafka.model.KafkaConnector;
 import it.water.connectors.kafka.producer.KafkaProducerPoolImpl;
 import it.water.connectors.kafka.util.KafkaConnectorConstants;
 import it.water.core.api.bundle.ApplicationProperties;
@@ -23,29 +19,13 @@ import it.water.core.interceptors.annotations.FrameworkComponent;
 import it.water.core.interceptors.annotations.Inject;
 import it.water.core.service.BaseSystemServiceImpl;
 import lombok.Setter;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpDelete;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.client.methods.HttpPut;
-import org.apache.http.client.methods.HttpUriRequest;
+import org.apache.http.client.methods.*;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
-import org.apache.kafka.clients.admin.AdminClient;
-import org.apache.kafka.clients.admin.AdminClientConfig;
-import org.apache.kafka.clients.admin.CreateAclsResult;
-import org.apache.kafka.clients.admin.CreateTopicsResult;
-import org.apache.kafka.clients.admin.DeleteAclsResult;
-import org.apache.kafka.clients.admin.DeleteTopicsResult;
-import org.apache.kafka.clients.admin.NewTopic;
+import org.apache.kafka.clients.admin.*;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
-import org.apache.kafka.clients.producer.Callback;
-import org.apache.kafka.clients.producer.KafkaProducer;
-import org.apache.kafka.clients.producer.Producer;
-import org.apache.kafka.clients.producer.ProducerConfig;
-import org.apache.kafka.clients.producer.ProducerRecord;
-import org.apache.kafka.clients.producer.RecordMetadata;
+import org.apache.kafka.clients.producer.*;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.acl.AccessControlEntry;
 import org.apache.kafka.common.acl.AccessControlEntryFilter;
@@ -68,22 +48,17 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
+import java.util.*;
+import java.util.concurrent.*;
 import java.util.regex.Pattern;
 
 @FrameworkComponent
 public class KafkaConnectorSystemServiceImpl extends BaseSystemServiceImpl implements KafkaConnectorSystemApi {
+
+    public static final String CONSUMER_REACTIVE_ON_PARTITIONS_ASSIGNED = "Consumer Reactive onPartitionsAssigned {}";
+    public static final String CONSUMER_REACTIVE_ON_PARTITIONS_REVOKED = "Consumer Reactive onPartitionsRevoked {}";
+    public static final String BOOTSTRAP_SERVERS = ".bootstrap.servers";
+    public static final String CONTENT_TYPE = "application/json";
 
     @Inject
     @Setter
@@ -246,17 +221,17 @@ public class KafkaConnectorSystemServiceImpl extends BaseSystemServiceImpl imple
 
     @Override
     public void produceMessage(KafkaMessage message, Producer<byte[], byte[]> producer, Callback callback) {
-        ProducerRecord<byte[], byte[]> record;
+        ProducerRecord<byte[], byte[]> recordP;
         if (message.getPartition() >= 0) {
-            record = new ProducerRecord<>(message.getTopic(), message.getPartition(), message.getKey(), message.getPayload());
+            recordP = new ProducerRecord<>(message.getTopic(), message.getPartition(), message.getKey(), message.getPayload());
         } else {
-            record = new ProducerRecord<>(message.getTopic(), message.getKey(), message.getPayload());
+            recordP = new ProducerRecord<>(message.getTopic(), message.getKey(), message.getPayload());
         }
         final long beforeSendTime = System.currentTimeMillis();
         if (callback != null) {
-            producer.send(record, callback);
+            producer.send(recordP, callback);
         } else {
-            producer.send(record, (RecordMetadata metadata, Exception exception) -> {
+            producer.send(recordP, (RecordMetadata metadata, Exception exception) -> {
                 if (exception != null) {
                     getLog().error(exception.getMessage(), exception);
                 } else if (getLog().isDebugEnabled()) {
@@ -339,8 +314,8 @@ public class KafkaConnectorSystemServiceImpl extends BaseSystemServiceImpl imple
             pollTime,
             keyDeserializerClass,
             valueDeserializerClass,
-            partitions -> getLog().debug("Consumer Reactive onPartitionsAssigned {}", partitions),
-            partitions -> getLog().debug("Consumer Reactive onPartitionsRevoked {}", partitions)
+            partitions -> getLog().debug(CONSUMER_REACTIVE_ON_PARTITIONS_ASSIGNED, partitions),
+            partitions -> getLog().debug(CONSUMER_REACTIVE_ON_PARTITIONS_REVOKED, partitions)
         );
     }
 
@@ -368,8 +343,8 @@ public class KafkaConnectorSystemServiceImpl extends BaseSystemServiceImpl imple
             pollTime,
             keyDeserializerClass,
             valueDeserializerClass,
-            partitions -> getLog().debug("Consumer Reactive onPartitionsAssigned {}", partitions),
-            partitions -> getLog().debug("Consumer Reactive onPartitionsRevoked {}", partitions)
+            partitions -> getLog().debug(CONSUMER_REACTIVE_ON_PARTITIONS_ASSIGNED, partitions),
+            partitions -> getLog().debug(CONSUMER_REACTIVE_ON_PARTITIONS_REVOKED, partitions)
         );
     }
 
@@ -384,13 +359,19 @@ public class KafkaConnectorSystemServiceImpl extends BaseSystemServiceImpl imple
             valueDeserializerClass
         );
         if (options != null) {
-            KafkaReceiver.create(options).receive().subscribe(m -> {
-                String topic = m.topic();
-                byte[] key = m.key();
-                int partition = m.partition();
-                KafkaMessage message = KafkaMessage.from(topic, key, m.value(), partition);
-                this.notifyMessageReceivers(message);
-            });
+            Scheduler processingScheduler = this.reactorScheduler != null ? this.reactorScheduler : Schedulers.boundedElastic();
+            KafkaReceiver.create(options)
+                .receive()
+                .subscribeOn(processingScheduler)
+                .parallel()
+                .runOn(processingScheduler)
+                .subscribe(m -> {
+                    String topic = m.topic();
+                    byte[] key = m.key();
+                    int partition = m.partition();
+                    KafkaMessage message = KafkaMessage.from(topic, key, m.value(), partition);
+                    this.notifyMessageReceivers(message);
+                });
         }
     }
 
@@ -404,17 +385,23 @@ public class KafkaConnectorSystemServiceImpl extends BaseSystemServiceImpl imple
             pollTime,
             keyDeserializerClass,
             valueDeserializerClass,
-            partitions -> getLog().debug("Consumer Reactive onPartitionsAssigned {}", partitions),
-            partitions -> getLog().debug("Consumer Reactive onPartitionsRevoked {}", partitions)
+            partitions -> getLog().debug(CONSUMER_REACTIVE_ON_PARTITIONS_ASSIGNED, partitions),
+            partitions -> getLog().debug(CONSUMER_REACTIVE_ON_PARTITIONS_REVOKED, partitions)
         );
         if (options != null) {
-            KafkaReceiver.create(options).receive().subscribe(m -> {
-                String currentTopic = m.topic();
-                byte[] key = m.key();
-                int partition = m.partition();
-                KafkaMessage message = KafkaMessage.from(currentTopic, key, m.value(), partition);
-                this.notifyMessageReceivers(message);
-            });
+            Scheduler processingScheduler = this.reactorScheduler != null ? this.reactorScheduler : Schedulers.boundedElastic();
+            KafkaReceiver.create(options)
+                .receive()
+                .subscribeOn(processingScheduler)
+                .parallel()
+                .runOn(processingScheduler)
+                .subscribe(m -> {
+                    String currentTopic = m.topic();
+                    byte[] key = m.key();
+                    int partition = m.partition();
+                    KafkaMessage message = KafkaMessage.from(currentTopic, key, m.value(), partition);
+                    this.notifyMessageReceivers(message);
+                });
         }
     }
 
@@ -570,15 +557,15 @@ public class KafkaConnectorSystemServiceImpl extends BaseSystemServiceImpl imple
                 getLog().error(t.getMessage(), t);
             }
         }
-        KafkaGloabalNotifier.notifyKafkaMessage(message);
+        KafkaGlobalNotifier.notifyKafkaMessage(message);
     }
 
     private ReceiverOptions<byte[], byte[]> createReceiverOptionsForPattern(
         String kafkaGroupId,
         Pattern topicPattern,
         long pollTime,
-        Class keyDeserializerClass,
-        Class valueDeserializerClass
+        Class<?> keyDeserializerClass,
+        Class<?> valueDeserializerClass
     ) {
         if (this.consumerProperties.isEmpty()) {
             return null;
@@ -600,8 +587,8 @@ public class KafkaConnectorSystemServiceImpl extends BaseSystemServiceImpl imple
         List<String> topics,
         List<Integer> partitions,
         long pollTime,
-        Class keyDeserializerClass,
-        Class valueDeserializerClass,
+        Class<?> keyDeserializerClass,
+        Class<?> valueDeserializerClass,
         KafkaPartitionAssignListener assignListener,
         KafkaPartitionRevokeListener revokeListener
     ) {
@@ -616,16 +603,26 @@ public class KafkaConnectorSystemServiceImpl extends BaseSystemServiceImpl imple
         props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, valueDeserializerClass.getName());
 
         ReceiverOptions<byte[], byte[]> options = ReceiverOptions.<byte[], byte[]>create((Map<String, Object>) (Map<?, ?>) props)
-            .pollTimeout(Duration.ofMillis(pollTime))
-            .addAssignListener(assignListener)
-            .addRevokeListener(revokeListener);
+            .pollTimeout(Duration.ofMillis(pollTime));
+        if (assignListener != null) {
+            options = options.addAssignListener(assignListener);
+        }
+        if (revokeListener != null) {
+            options = options.addRevokeListener(revokeListener);
+        }
 
         if (partitions != null && !partitions.isEmpty()) {
+            if (topics == null || topics.size() != partitions.size()) {
+                getLog().warn(
+                    "Cannot create receiver assignment: topics size {} differs from partitions size {}",
+                    topics != null ? topics.size() : null,
+                    partitions.size()
+                );
+                return null;
+            }
             List<TopicPartition> topicPartitions = new ArrayList<>();
-            for (String topic : topics) {
-                for (Integer partition : partitions) {
-                    topicPartitions.add(new TopicPartition(topic, partition));
-                }
+            for (int i = 0; i < topics.size(); i++) {
+                topicPartitions.add(new TopicPartition(topics.get(i), partitions.get(i)));
             }
             return options.assignment(topicPartitions);
         }
@@ -637,25 +634,25 @@ public class KafkaConnectorSystemServiceImpl extends BaseSystemServiceImpl imple
             consumerProperties,
             ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG,
             applicationProperties,
-            "it.water.connectors.kafka.bootstrap.servers",
-            KafkaConnectorConstants.WATER_KAFKA_PROPS_GLOBAL_PREFIX + ".bootstrap.servers",
-            KafkaConnectorConstants.WATER_KAFKA_PROPS_CONSUMER_PREFIX + ".bootstrap.servers"
+                KafkaConnectorConstants.WATER_KAFKA_BOOTSTRAP_SERVERS,
+            KafkaConnectorConstants.WATER_KAFKA_PROPS_GLOBAL_PREFIX + BOOTSTRAP_SERVERS,
+            KafkaConnectorConstants.WATER_KAFKA_PROPS_CONSUMER_PREFIX + BOOTSTRAP_SERVERS
         );
         copyKafkaProperty(
             producerProperties,
             ProducerConfig.BOOTSTRAP_SERVERS_CONFIG,
             applicationProperties,
-            "it.water.connectors.kafka.bootstrap.servers",
-            KafkaConnectorConstants.WATER_KAFKA_PROPS_GLOBAL_PREFIX + ".bootstrap.servers",
-            KafkaConnectorConstants.WATER_KAFKA_PROPS_PRODUCER_PREFIX + ".bootstrap.servers"
+                KafkaConnectorConstants.WATER_KAFKA_BOOTSTRAP_SERVERS,
+            KafkaConnectorConstants.WATER_KAFKA_PROPS_GLOBAL_PREFIX + BOOTSTRAP_SERVERS,
+            KafkaConnectorConstants.WATER_KAFKA_PROPS_PRODUCER_PREFIX + BOOTSTRAP_SERVERS
         );
         copyKafkaProperty(
             adminProperties,
             AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG,
             applicationProperties,
-            "it.water.connectors.kafka.bootstrap.servers",
-            KafkaConnectorConstants.WATER_KAFKA_PROPS_GLOBAL_PREFIX + ".bootstrap.servers",
-            KafkaConnectorConstants.WATER_KAFKA_PROPS_ADMIN_PREFIX + ".bootstrap.servers"
+                KafkaConnectorConstants.WATER_KAFKA_BOOTSTRAP_SERVERS,
+            KafkaConnectorConstants.WATER_KAFKA_PROPS_GLOBAL_PREFIX + BOOTSTRAP_SERVERS,
+            KafkaConnectorConstants.WATER_KAFKA_PROPS_ADMIN_PREFIX + BOOTSTRAP_SERVERS
         );
 
         if (!consumerProperties.containsKey(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG)) {
@@ -711,7 +708,7 @@ public class KafkaConnectorSystemServiceImpl extends BaseSystemServiceImpl imple
             readProperty(applicationProperties, KafkaConnectorConstants.WATER_KAFKA_OSGI_CONNECT_URL),
             "http://localhost:8083"
         );
-        if (!this.kafkaConnectUrl.startsWith("http://") && !this.kafkaConnectUrl.startsWith("https://")) {
+        if (this.kafkaConnectUrl != null && !this.kafkaConnectUrl.startsWith("http://") && !this.kafkaConnectUrl.startsWith("https://")) {
             this.kafkaConnectUrl = "http://" + this.kafkaConnectUrl;
         }
 
@@ -776,14 +773,14 @@ public class KafkaConnectorSystemServiceImpl extends BaseSystemServiceImpl imple
 
     private String executeRequest(HttpUriRequest request, String requestBody) throws IOException {
         try (CloseableHttpClient client = HttpClients.createDefault()) {
-            request.addHeader("Accept", "application/json");
-            if (request instanceof HttpPost && requestBody != null) {
-                ((HttpPost) request).setEntity(new StringEntity(requestBody, StandardCharsets.UTF_8));
-                request.addHeader("Content-Type", "application/json");
+            request.addHeader("Accept", CONTENT_TYPE);
+            if (request instanceof HttpPost httpPost && requestBody != null) {
+                httpPost.setEntity(new StringEntity(requestBody, StandardCharsets.UTF_8));
+                request.addHeader("Content-Type", CONTENT_TYPE);
             }
-            if (request instanceof HttpPut && requestBody != null) {
-                ((HttpPut) request).setEntity(new StringEntity(requestBody, StandardCharsets.UTF_8));
-                request.addHeader("Content-Type", "application/json");
+            if (request instanceof HttpPut httpPut && requestBody != null) {
+                httpPut.setEntity(new StringEntity(requestBody, StandardCharsets.UTF_8));
+                request.addHeader("Content-Type", CONTENT_TYPE);
             }
             try (CloseableHttpResponse response = client.execute(request)) {
                 int statusCode = response.getStatusLine() != null ? response.getStatusLine().getStatusCode() : 0;

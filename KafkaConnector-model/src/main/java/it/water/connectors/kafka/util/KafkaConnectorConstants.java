@@ -1,5 +1,7 @@
 package it.water.connectors.kafka.util;
 public class KafkaConnectorConstants {
+    private KafkaConnectorConstants(){}
+
     public static final String WATER_KAFKA_SYSTEM_CONSUMER_MAX_THREADS = "it.water.connectors.kafka.system.max.consumer.threads";
     public static final String WATER_KAFKA_REACTOR_PROP_MAX_CONSUMER_THREADS = "it.water.connectors.kafka.reactor.max.consumer.threads";
     public static final String WATER_KAFKA_PROPS_CONSUMER_PREFIX = "it.water.connectors.kafka.consumer";
@@ -15,4 +17,5 @@ public class KafkaConnectorConstants {
             WATER_KAFKA_OSGI_BASIC_TOPIC + "_microservices";
     public static final String WATER_KAFKA_OSGI_CONNECT_URL = "it.water.connectors.kafka.connect.url";
     public static final String WATER_KAFKA_SYSTEM_MESSAGE_TYPE_PROCESS_EVENT = "PROCESS_EVENT";
+    public static final String WATER_KAFKA_BOOTSTRAP_SERVERS = "it.water.connectors.kafka.bootstrap.servers";
 }

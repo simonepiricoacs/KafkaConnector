@@ -30,12 +30,12 @@ public class KafkaOSGISystemNotifier implements KafkaSystemMessageNotifier {
 
     @OnActivate
     public void activate() {
-        KafkaGloabalNotifier.registerNotifier(this);
+        KafkaGlobalNotifier.registerNotifier(this);
     }
 
     @OnDeactivate
     public void deactivate() {
-        KafkaGloabalNotifier.unregisterNotifier(this);
+        KafkaGlobalNotifier.unregisterNotifier(this);
     }
 
     @Override

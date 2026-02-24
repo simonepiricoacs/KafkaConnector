@@ -2,11 +2,7 @@ package it.water.connectors.kafka.consumer;
 
 import it.water.connectors.kafka.model.KafkaMessage;
 import it.water.connectors.kafka.util.KafkaConnectorConstants;
-import org.apache.kafka.clients.consumer.Consumer;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.kafka.clients.consumer.ConsumerRecords;
-import org.apache.kafka.clients.consumer.KafkaConsumer;
-import org.apache.kafka.clients.consumer.OffsetAndMetadata;
+import org.apache.kafka.clients.consumer.*;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.WakeupException;
 import org.slf4j.Logger;
@@ -67,8 +63,8 @@ public class KafkaConsumerThread implements Runnable {
                 ConsumerRecords<byte[], byte[]> consumerRecords = consumer.poll(Duration.ofMillis(pollDurationMillis));
                 for (TopicPartition partition : consumerRecords.partitions()) {
                     List<ConsumerRecord<byte[], byte[]>> partitionRecords = consumerRecords.records(partition);
-                    for (ConsumerRecord<byte[], byte[]> record : partitionRecords) {
-                        KafkaMessage message = KafkaMessage.from(record.topic(), record.key(), record.value());
+                    for (ConsumerRecord<byte[], byte[]> recordP : partitionRecords) {
+                        KafkaMessage message = KafkaMessage.from(recordP.topic(), recordP.key(), recordP.value());
                         notifyKafkaMessage(message);
                     }
                     long lastOffset = partitionRecords.get(partitionRecords.size() - 1).offset();
