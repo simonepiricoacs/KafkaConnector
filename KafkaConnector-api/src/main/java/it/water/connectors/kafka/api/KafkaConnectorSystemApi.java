@@ -24,8 +24,10 @@ import java.util.regex.Pattern;
  * System-level API for the Kafka connector.
  * Exposes internal integration operations such as system consumers/producers,
  * receiver registration, Kafka admin operations and Kafka Connect management.
+ *
+ * Management operations (topics, ACLs, connectors) are inherited from KafkaConnectorManagementApi.
  */
-public interface KafkaConnectorSystemApi extends BaseSystemApi {
+public interface KafkaConnectorSystemApi extends BaseSystemApi, KafkaConnectorManagementApi {
     /**
      * Registers a message receiver for a specific topic (or wildcard topic, e.g. {@code *}).
      *
@@ -189,98 +191,6 @@ public interface KafkaConnectorSystemApi extends BaseSystemApi {
      */
     @SuppressWarnings("rawtypes")
     void consumeReactiveAsSystem(String kafkaGroupId, String topic, long pollTime, Class keyDeserializerClass, Class valueDeserializerClass) throws ClassNotFoundException;
-
-    /**
-     * Creates a Kafka topic through the Kafka Admin client.
-     *
-     * @param topic topic name to create
-     * @param numPartitions number of partitions to assign
-     * @param numReplicas replication factor
-     * @return Kafka admin create-topic result, or {@code null} if admin client is not available
-     */
-    CreateTopicsResult adminCreateTopic(String topic, int numPartitions, short numReplicas);
-
-    /**
-     * Creates multiple Kafka topics through the Kafka Admin client.
-     *
-     * @param topics topic names to create
-     * @param numPartitions partitions per topic (same index as {@code topics})
-     * @param numReplicas replication factor per topic (same index as {@code topics})
-     * @return Kafka admin create-topics result, or {@code null} if admin client is not available
-     */
-    CreateTopicsResult adminCreateTopic(String[] topics, int[] numPartitions, short[] numReplicas);
-
-    /**
-     * Deletes Kafka topics through the Kafka Admin client.
-     *
-     * @param topics topics to delete
-     * @return Kafka admin delete-topics result, or {@code null} if admin client is not available
-     */
-    DeleteTopicsResult adminDropTopic(List<String> topics);
-
-    /**
-     * Adds Kafka ACLs for a user on the configured resources.
-     *
-     * @param username Kafka principal/user name
-     * @param permissions map of permissions keyed by caller-defined identifiers
-     * @return Kafka admin create-acls result, or {@code null} if admin client is not available
-     */
-    CreateAclsResult adminAddACLs(String username, Map<String, KafkaPermission> permissions);
-
-    /**
-     * Deletes Kafka ACLs for a user on the configured resources.
-     *
-     * @param username Kafka principal/user name
-     * @param permissions map of permissions keyed by caller-defined identifiers
-     * @return Kafka admin delete-acls result, or {@code null} if admin client is not available
-     */
-    DeleteAclsResult adminDeleteACLs(String username, Map<String, KafkaPermission> permissions);
-
-    /**
-     * Creates a new Kafka Connect connector instance.
-     *
-     * @param instanceName connector instance name
-     * @param config connector configuration payload
-     * @return created connector representation
-     * @throws IOException if Kafka Connect responds with an error or the response cannot be parsed
-     */
-    KafkaConnector addNewConnector(String instanceName, ConnectorConfig config) throws IOException;
-
-    /**
-     * Deletes a Kafka Connect connector instance.
-     *
-     * @param instanceName connector instance name
-     * @param deleteKafkaTopic whether the corresponding Kafka topic must also be deleted
-     * @throws IOException if Kafka Connect responds with an error
-     */
-    void deleteConnector(String instanceName, boolean deleteKafkaTopic) throws IOException;
-
-    /**
-     * Retrieves a Kafka Connect connector instance configuration/status.
-     *
-     * @param instanceName connector instance name
-     * @return connector representation
-     * @throws IOException if Kafka Connect responds with an error or the response cannot be parsed
-     */
-    KafkaConnector getConnector(String instanceName) throws IOException;
-
-    /**
-     * Lists all Kafka Connect connector instance names.
-     *
-     * @return connector names
-     * @throws IOException if Kafka Connect responds with an error or the response cannot be parsed
-     */
-    List<String> listConnectors() throws IOException;
-
-    /**
-     * Updates a Kafka Connect connector instance configuration.
-     *
-     * @param instanceName connector instance name
-     * @param config connector configuration payload
-     * @return updated connector representation
-     * @throws IOException if Kafka Connect responds with an error or the response cannot be parsed
-     */
-    KafkaConnector updateConnector(String instanceName, ConnectorConfig config) throws IOException;
 
     /**
      * Returns the Kafka topic used for cluster/system communication.

@@ -62,14 +62,18 @@ public class KafkaOSGISystemNotifier implements KafkaSystemMessageNotifier {
             ComponentFilter receiverFilter = topicFilter.and(keyFilter);
             List<KafkaMessageReceiver> receivers = componentRegistry.findComponents(KafkaMessageReceiver.class, receiverFilter);
             for (KafkaMessageReceiver receiver : receivers) {
-                try {
-                    receiver.receive(message);
-                } catch (Throwable t) {
-                    LOG.error("Error while notifying KafkaMessageReceiver {}", receiver.getClass().getName(), t);
-                }
+                notifyReceiver(receiver, message);
             }
         } catch (Throwable t) {
             LOG.error("Error while dispatching kafka system message", t);
+        }
+    }
+
+    private void notifyReceiver(KafkaMessageReceiver receiver, KafkaMessage message) {
+        try {
+            receiver.receive(message);
+        } catch (Throwable t) {
+            LOG.error("Error while notifying KafkaMessageReceiver {}", receiver.getClass().getName(), t);
         }
     }
 }

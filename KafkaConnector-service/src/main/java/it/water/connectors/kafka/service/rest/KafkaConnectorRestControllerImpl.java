@@ -27,8 +27,7 @@ import java.util.Arrays;
  */
 @FrameworkRestController(referredRestApi = KafkaConnectorRestApi.class)
 public class KafkaConnectorRestControllerImpl implements KafkaConnectorRestApi {
-    @SuppressWarnings("java:S1068") //still mantain the variable even if not used
-    private static Logger log = LoggerFactory.getLogger(KafkaConnectorRestControllerImpl.class.getName());
+    private static final Logger log = LoggerFactory.getLogger(KafkaConnectorRestControllerImpl.class.getName());
 
     @Inject
     @Setter
@@ -44,10 +43,17 @@ public class KafkaConnectorRestControllerImpl implements KafkaConnectorRestApi {
     public Response addConnector(ConnectorConfig connectorConfig) {
         log.debug("In REST Service POST /kafka/connectors");
         try {
+            if (connectorConfig == null || connectorConfig.getName() == null) {
+                log.warn("Invalid connector configuration: null or missing name");
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity("Connector configuration and name cannot be null").build();
+            }
             KafkaConnector connector = kafkaConnectorApi.addNewConnector(connectorConfig.getName(), connectorConfig);
             return Response.ok().entity(connector).build();
-        } catch (Throwable e) {
-            return Response.serverError().entity(e.getMessage()).build();
+        } catch (Exception e) {
+            log.error("Error adding connector", e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity("Failed to add connector").build();
         }
     }
 
@@ -55,10 +61,17 @@ public class KafkaConnectorRestControllerImpl implements KafkaConnectorRestApi {
     public Response updateConnector(String instanceName, ConnectorConfig connectorConfig) {
         log.debug("In REST Service PUT /kafka/connectors/{}", instanceName);
         try {
+            if (instanceName == null || instanceName.trim().isEmpty() || connectorConfig == null) {
+                log.warn("Invalid update request: null or empty instanceName or null connectorConfig");
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity("Instance name and connector configuration cannot be null or empty").build();
+            }
             KafkaConnector connector = kafkaConnectorApi.updateConnector(instanceName, connectorConfig);
             return Response.ok().entity(connector).build();
-        } catch (Throwable e) {
-            return Response.serverError().entity(e.getMessage()).build();
+        } catch (Exception e) {
+            log.error("Error updating connector", e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity("Failed to update connector").build();
         }
     }
 
@@ -66,22 +79,38 @@ public class KafkaConnectorRestControllerImpl implements KafkaConnectorRestApi {
     public Response deleteConnector(String instanceName) {
         log.debug("In REST Service DELETE /kafka/connectors/{}", instanceName);
         try {
+            if (instanceName == null || instanceName.trim().isEmpty()) {
+                log.warn("Invalid delete request: null or empty instanceName");
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity("Instance name cannot be null or empty").build();
+            }
             kafkaConnectorApi.deleteConnector(instanceName, true);
             return Response.ok().entity("Connector deleted.").build();
-        } catch (Throwable e) {
-            return Response.serverError().entity(e.getMessage()).build();
+        } catch (Exception e) {
+            log.error("Error deleting connector", e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity("Failed to delete connector").build();
         }
     }
 
     @Override
     public Response createTopic(TopicConfig topicConfig) {
-        log.debug("In REST Service POST /kafka/topic: {}", topicConfig);
+        if (log.isDebugEnabled()) {
+            log.debug("In REST Service POST /kafka/topic: {}", topicConfig);
+        }
         try {
+            if (topicConfig == null || topicConfig.getTopic() == null) {
+                log.warn("Invalid topic configuration: null topicConfig or topic name");
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity("Topic configuration and topic name cannot be null").build();
+            }
             CreateTopicsResult result = kafkaConnectorApi.adminCreateTopic(
                     topicConfig.getTopic(), topicConfig.getNumPartition(), topicConfig.getReplicationFactor());
             return Response.ok().entity(result).build();
-        } catch (Throwable e) {
-            return Response.serverError().entity(e.getMessage()).build();
+        } catch (Exception e) {
+            log.error("Error creating topic", e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity("Failed to create topic").build();
         }
     }
 
@@ -91,6 +120,11 @@ public class KafkaConnectorRestControllerImpl implements KafkaConnectorRestApi {
             log.debug("In REST Service POST /kafka/topics: {}", Arrays.toString(topicsConfig));
         }
         try {
+            if (topicsConfig == null || topicsConfig.length == 0) {
+                log.warn("Invalid topics configuration: null or empty array");
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity("Topics configuration cannot be null or empty").build();
+            }
             String[] topics = new String[topicsConfig.length];
             int[] numPartitions = new int[topicsConfig.length];
             short[] numReplicas = new short[topicsConfig.length];
@@ -101,8 +135,10 @@ public class KafkaConnectorRestControllerImpl implements KafkaConnectorRestApi {
             }
             CreateTopicsResult result = kafkaConnectorApi.adminCreateTopic(topics, numPartitions, numReplicas);
             return Response.ok().entity(result).build();
-        } catch (Throwable e) {
-            return Response.serverError().entity(e.getMessage()).build();
+        } catch (Exception e) {
+            log.error("Error creating topics", e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity("Failed to create topics").build();
         }
     }
 
@@ -112,32 +148,57 @@ public class KafkaConnectorRestControllerImpl implements KafkaConnectorRestApi {
             log.debug("In REST Service DELETE /kafka/topics: {}", Arrays.toString(topics));
         }
         try {
+            if (topics == null || topics.length == 0) {
+                log.warn("Invalid topics array: null or empty");
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity("Topics array cannot be null or empty").build();
+            }
             DeleteTopicsResult result = kafkaConnectorApi.adminDropTopic(Arrays.asList(topics));
             return Response.ok().entity(result).build();
-        } catch (Throwable e) {
-            return Response.serverError().entity(e.getMessage()).build();
+        } catch (Exception e) {
+            log.error("Error dropping topics", e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity("Failed to drop topics").build();
         }
     }
 
     @Override
     public Response addACLs(ACLConfig aclConfig) {
-        log.debug("In REST Service POST /kafka/acl: {}", aclConfig);
+        if (log.isDebugEnabled()) {
+            log.debug("In REST Service POST /kafka/acl: {}", aclConfig);
+        }
         try {
+            if (aclConfig == null || aclConfig.getUsername() == null) {
+                log.warn("Invalid ACL configuration: null aclConfig or username");
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity("ACL configuration and username cannot be null").build();
+            }
             CreateAclsResult result = kafkaConnectorApi.adminAddACLs(aclConfig.getUsername(), aclConfig.getPermissions());
             return Response.ok().entity(result).build();
-        } catch (Throwable e) {
-            return Response.serverError().entity(e.getMessage()).build();
+        } catch (Exception e) {
+            log.error("Error adding ACLs", e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity("Failed to add ACLs").build();
         }
     }
 
     @Override
     public Response deleteACLs(ACLConfig aclConfig) {
-        log.debug("In REST Service DELETE /kafka/acl: {}", aclConfig);
+        if (log.isDebugEnabled()) {
+            log.debug("In REST Service DELETE /kafka/acl: {}", aclConfig);
+        }
         try {
+            if (aclConfig == null || aclConfig.getUsername() == null) {
+                log.warn("Invalid ACL configuration: null aclConfig or username");
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity("ACL configuration and username cannot be null").build();
+            }
             DeleteAclsResult result = kafkaConnectorApi.adminDeleteACLs(aclConfig.getUsername(), aclConfig.getPermissions());
             return Response.ok().entity(result).build();
-        } catch (Throwable e) {
-            return Response.serverError().entity(e.getMessage()).build();
+        } catch (Exception e) {
+            log.error("Error deleting ACLs", e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity("Failed to delete ACLs").build();
         }
     }
 

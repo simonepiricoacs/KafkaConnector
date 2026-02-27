@@ -68,7 +68,7 @@ class KafkaConnectorRestControllerImplUnitTest {
         Response response = restController.addConnector(config);
 
         assertEquals(500, response.getStatus());
-        assertEquals("boom", response.getEntity());
+        assertEquals("Failed to add connector", response.getEntity());
     }
 
     @Test
@@ -92,7 +92,7 @@ class KafkaConnectorRestControllerImplUnitTest {
         Response response = restController.updateConnector("my-connector", config);
 
         assertEquals(500, response.getStatus());
-        assertEquals("update-error", response.getEntity());
+        assertEquals("Failed to update connector", response.getEntity());
     }
 
     @Test
@@ -111,7 +111,7 @@ class KafkaConnectorRestControllerImplUnitTest {
         Response response = restController.deleteConnector("my-connector");
 
         assertEquals(500, response.getStatus());
-        assertEquals("delete-error", response.getEntity());
+        assertEquals("Failed to delete connector", response.getEntity());
     }
 
     @Test
@@ -139,7 +139,7 @@ class KafkaConnectorRestControllerImplUnitTest {
         Response response = restController.createTopic(topicConfig);
 
         assertEquals(500, response.getStatus());
-        assertEquals("topic-error", response.getEntity());
+        assertEquals("Failed to create topic", response.getEntity());
     }
 
     @Test
@@ -212,9 +212,9 @@ class KafkaConnectorRestControllerImplUnitTest {
         Response deleteError = restController.deleteACLs(config);
 
         assertEquals(500, createError.getStatus());
-        assertEquals("acl-add-error", createError.getEntity());
+        assertEquals("Failed to add ACLs", createError.getEntity());
         assertEquals(500, deleteError.getStatus());
-        assertEquals("acl-del-error", deleteError.getEntity());
+        assertEquals("Failed to delete ACLs", deleteError.getEntity());
     }
 
 }

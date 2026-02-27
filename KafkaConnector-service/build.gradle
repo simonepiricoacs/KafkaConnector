@@ -44,6 +44,7 @@ dependencies {
 	//Kafka clients and reactor
 	implementation group: 'org.apache.kafka', name: 'kafka-clients', version: project.kafkaClientsVersion
 	implementation group: 'io.projectreactor.kafka', name: 'reactor-kafka', version: project.reactorKafkaVersion
+	//  Upgrade to httpclient5 5.x (currently 4.5.13 for compatibility, EOL - should migrate code to new API)
 	implementation group: 'org.apache.httpcomponents', name: 'httpclient', version: '4.5.13'
 
 	testImplementation group:'it.water.core',name:'Core-testing-utils',version:project.waterVersion
@@ -61,8 +62,6 @@ dependencies {
 	testImplementation group: 'org.reflections', name: 'reflections', version: '0.10.2'
 	testImplementation group: 'org.apache.httpcomponents', name: 'httpclient', version: '4.5.13'
 	testImplementation group: 'org.apache.cxf', name: 'cxf-rt-transports-http-jetty', version: project.cxfVersion
-	testImplementation group: 'org.springframework', name: 'spring-web', version: '5.3.22'
-	testImplementation group: 'org.springframework', name: 'spring-context', version: '5.3.22'
 	//with 9.4.4 tests won't work because of the integration between cxf and jetty outside karaf context
 	testImplementation group: 'org.eclipse.jetty', name: 'jetty-servlet', version: project.jettyVersion
 	// https://mvnrepository.com/artifact/com.intuit.karate/karate-junit5

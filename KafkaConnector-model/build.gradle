@@ -12,6 +12,8 @@ dependencies {
     // Water Validation (@NoMalitiusCode)
     implementation group: 'jakarta.validation', name: 'jakarta.validation-api', version: project.jakartaValidationVersion
     implementation group: 'it.water.core', name: 'Core-validation', version: project.waterVersion
+    // Water Core API (ProtectedResource, Resource)
+    implementation group: 'it.water.core', name: 'Core-api', version: project.waterVersion
     // Kafka clients (PatternType, AclOperation, AclPermissionType)
     implementation group: 'org.apache.kafka', name: 'kafka-clients', version: project.kafkaClientsVersion
 }
